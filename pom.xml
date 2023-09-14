@@ -191,6 +191,7 @@
 			</plugin>
 		</plugins>
 	</build>
+	<!--
 	<scm>
 		<connection>
 			scm:git:git@github.com:amusarra/liferay-portal-database-all-in-one-support.git
@@ -209,4 +210,5 @@
 		</url>
 		<system>GitHub</system>
 	</issueManagement>
+	 -->
 </project>
