@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.naming.NamingException;
+
 /**
  * @author Alexander Chow
  * @author Sandeep Soni
@@ -128,6 +130,31 @@ public class OracleDB extends BaseDB {
 	@Override
 	public boolean isSupportsInlineDistinct() {
 		return _SUPPORTS_INLINE_DISTINCT;
+	}
+
+	//runSQLTemplateString not accepting failOnError = true or bundles with updates errors never got stopped!!!
+	@Override
+	public void runSQLTemplateString(
+			Connection connection, String template, boolean failOnError)
+		throws IOException, NamingException, SQLException {
+
+		if (failOnError)
+
+			throw new SQLException(
+				"failOnError == true not supported for Oracle");
+		super.runSQLTemplateString(connection, template, failOnError);
+	}
+
+	//runSQLTemplateString not accepting failOnError = true or bundles with updates errors never got stopped!!!
+	@Override
+	public void runSQLTemplateString(String template, boolean failOnError)
+		throws IOException, NamingException, SQLException {
+
+		if (failOnError)
+
+			throw new SQLException(
+				"failOnError == true not supported for Oracle");
+		super.runSQLTemplateString(template, failOnError);
 	}
 
 	@Override
