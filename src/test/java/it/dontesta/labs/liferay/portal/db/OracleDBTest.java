@@ -32,6 +32,26 @@ import org.junit.Test;
 public class OracleDBTest extends BaseDBTestCase {
 
 	@Test
+	public void testCleanCreateIndexColumnLength() throws Exception {
+		_nullable = true;
+
+		Assert.assertEquals(
+			"create index IX_106FBFC3 on RedirectEntry (groupId, destinationURL)",
+			((OracleDB)getDB()).cleanCreateIndexColumnLength(
+				"create index IX_106FBFC3 on RedirectEntry (groupId, destinationURL(1500))"));
+
+		Assert.assertEquals(
+			"create unique index IX_5040C136 on RedirectEntry (groupId, sourceURL)",
+			((OracleDB)getDB()).cleanCreateIndexColumnLength(
+				"create unique index IX_5040C136 on RedirectEntry (groupId, sourceURL(1500))"));
+
+		Assert.assertEquals(
+			"create bitmap index IX_customtest on TestTableEntry (id1, id2)",
+			((OracleDB)getDB()).cleanCreateIndexColumnLength(
+				"create bitmap index IX_customtest on TestTableEntry (id1, id2(1500))"));
+	}
+
+	@Test
 	public void testDBType() throws IOException {
 		Assert.assertEquals(DBType.ORACLE, getDB().getDBType());
 	}

@@ -14,16 +14,19 @@
 
 package it.dontesta.labs.liferay.portal.dao.db;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.dao.db.BaseDB;
+import com.liferay.portal.dao.orm.common.SQLTransformer;
 import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.dao.db.Index;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.io.unsync.UnsyncBufferedReader;
 import com.liferay.portal.kernel.io.unsync.UnsyncStringReader;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
@@ -33,6 +36,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 
 import java.util.ArrayList;
@@ -59,6 +63,23 @@ public class OracleDB extends BaseDB {
 		template = _postBuildSQL(template);
 
 		return template;
+	}
+
+	public String cleanCreateIndexColumnLength(String sql) {
+		String s = sql.toLowerCase(
+		).trim(
+		).replaceAll(
+			_columnlengthNormalizeRgx, StringPool.BLANK
+		);
+
+		if (!s.startsWith("createindex") &&
+			!s.startsWith("createuniqueindex") &&
+			!s.startsWith("createbitmapindex")) {
+
+			return sql;
+		}
+
+		return sql.replaceAll(_columnlengthReplaceRgx, "");
 	}
 
 	@Override
@@ -154,6 +175,55 @@ public class OracleDB extends BaseDB {
 	//				"failOnError == true not supported for Oracle");
 	//		super.runSQLTemplateString(template, failOnError);
 	//	}
+
+	@Override
+	public void runSQL(Connection connection, String[] sqls)
+		throws IOException, SQLException {
+
+		try (Statement s = connection.createStatement()) {
+			for (String sql : sqls) {
+				sql = buildSQL(sql);
+
+				if (Validator.isNull(sql)) {
+					continue;
+				}
+
+				sql = SQLTransformer.transform(sql.trim());
+
+				if (sql.endsWith(";")) {
+					sql = sql.substring(0, sql.length() - 1);
+				}
+
+				if (sql.endsWith("\ngo")) {
+					sql = sql.substring(0, sql.length() - 3);
+				}
+
+				if (sql.endsWith("\n/")) {
+					sql = sql.substring(0, sql.length() - 2);
+				}
+
+				if (_log.isDebugEnabled()) {
+					_log.debug("-------- runSQL sql: " + sql);
+				}
+
+				sql = cleanCreateIndexColumnLength(sql);
+
+				try {
+					s.executeUpdate(sql);
+				}
+				catch (SQLException sqle) {
+					_log.error(
+						StringBundler.concat(
+							"@@@@@@@@@@@@@@@ SQL: ", sql, "\nSQL state: ",
+							sqle.getSQLState(), "\nVendor: ", getDBType(),
+							"\nVendor error code: ", sqle.getErrorCode(),
+							"\nVendor error message: ", sqle.getMessage()));
+
+					throw sqle;
+				}
+			}
+		}
+	}
 
 	@Override
 	protected String[] buildColumnTypeTokens(String line) {
@@ -327,9 +397,13 @@ public class OracleDB extends BaseDB {
 
 	private static final boolean _SUPPORTS_INLINE_DISTINCT = false;
 
+	private static final Log _log = LogFactoryUtil.getLog(OracleDB.class);
+
+	private static final String _columnlengthNormalizeRgx = "[^A-Za-z]";
+	private static final String _columnlengthReplaceRgx = "\\(\\s*\\d+\\s*\\)";
 	private static final Pattern _varchar2CharPattern = Pattern.compile(
-		"VARCHAR2\\((\\d+) CHAR\\)", 2);
+		"VARCHAR2\\((\\d+) CHAR\\)", Pattern.CASE_INSENSITIVE);
 	private static Pattern _varcharPattern = Pattern.compile(
-		"VARCHAR\\((\\d+)\\)", 2);
+		"VARCHAR\\((\\d+)\\)", Pattern.CASE_INSENSITIVE);
 
 }
